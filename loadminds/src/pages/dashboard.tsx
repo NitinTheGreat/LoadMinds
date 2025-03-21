@@ -1,12 +1,31 @@
-import React from "react"
+"use client"
+
+import type React from "react"
 import { useState, useEffect } from "react"
 import { getTasks, addTask, deleteTask } from "../api"
-import type { Task } from "../types"
+import type { Task, Toast } from "../types"
+import ToastComponent from "../Components/toast"
 
 function Dashboard() {
   const [tasks, setTasks] = useState<Task[]>([])
   const [newTaskTitle, setNewTaskTitle] = useState("")
   const [isLoading, setIsLoading] = useState(true)
+  const [toasts, setToasts] = useState<Toast[]>([])
+
+  // Add a toast notification
+  const addToast = (type: "success" | "error", message: string) => {
+    const newToast = {
+      id: Date.now().toString(),
+      type,
+      message,
+    }
+    setToasts((prev) => [...prev, newToast])
+  }
+
+  // Remove a toast notification
+  const removeToast = (id: string) => {
+    setToasts((prev) => prev.filter((toast) => toast.id !== id))
+  }
 
   useEffect(() => {
     const fetchTasks = async () => {
@@ -15,6 +34,7 @@ function Dashboard() {
         setTasks(tasksData)
       } catch (error) {
         console.error("Failed to fetch tasks:", error)
+        addToast("error", "Failed to fetch tasks")
       } finally {
         setIsLoading(false)
       }
@@ -25,14 +45,19 @@ function Dashboard() {
 
   const handleAddTask = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!newTaskTitle.trim()) return
+    if (!newTaskTitle.trim()) {
+      addToast("error", "Task title cannot be empty")
+      return
+    }
 
     try {
       const newTask = await addTask(newTaskTitle)
       setTasks([newTask, ...tasks])
       setNewTaskTitle("")
+      addToast("success", "Task added successfully")
     } catch (error) {
       console.error("Failed to add task:", error)
+      addToast("error", error instanceof Error ? error.message : "Failed to add task")
     }
   }
 
@@ -40,14 +65,23 @@ function Dashboard() {
     try {
       await deleteTask(id)
       setTasks(tasks.filter((task) => task.id !== id))
+      addToast("success", "Task deleted successfully")
     } catch (error) {
       console.error("Failed to delete task:", error)
+      addToast("error", error instanceof Error ? error.message : "Failed to delete task")
     }
   }
 
   return (
-    <div className="max-w-2xl mx-auto p-6 my-8 bg-white/90 rounded-lg shadow-md">
+    <div className="max-w-2xl mx-auto p-6 my-8 bg-white/90 rounded-lg shadow-md relative">
       <h1 className="text-2xl font-bold mb-6 text-center text-purple-800">Task Dashboard</h1>
+
+      {/* Toast container */}
+      <div className="fixed top-4 right-4 space-y-2 z-50">
+        {toasts.map((toast) => (
+          <ToastComponent key={toast.id} toast={toast} onClose={() => removeToast(toast.id)} />
+        ))}
+      </div>
 
       <form onSubmit={handleAddTask} className="flex gap-2 mb-6">
         <input

@@ -1,39 +1,63 @@
 import type { Task } from "./types"
 
-const API_URL = "http://localhost:5000/api/tasks"
+// Base URL for the API
+const API_BASE_URL = "http://127.0.0.1:5000"
 
-export async function getTasks(): Promise<Task[]> {
-  const response = await fetch(API_URL)
-  if (!response.ok) {
-    throw new Error("Failed to fetch tasks")
+// Get all tasks
+export const getTasks = async (): Promise<Task[]> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/tasks`)
+
+    if (!response.ok) {
+      throw new Error(`Error: ${response.status} ${response.statusText}`)
+    }
+
+    return await response.json()
+  } catch (error) {
+    console.error("Error fetching tasks:", error)
+    throw error
   }
-  return response.json()
 }
 
-// for adding a a new task
-export async function addTask(title: string): Promise<Task> {
-  const response = await fetch(API_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ title }),
-  })
+// Add a new task
+export const addTask = async (title: string): Promise<Task> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/tasks`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ title }),
+    })
 
-  if (!response.ok) {
-    throw new Error("Failed to add task")
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.error || `Error: ${response.status} ${response.statusText}`)
+    }
+
+    return await response.json()
+  } catch (error) {
+    console.error("Error adding task:", error)
+    throw error
   }
-
-  return response.json()
 }
 
-export async function deleteTask(id: number): Promise<void> {
-  const response = await fetch(`${API_URL}/${id}`, {
-    method: "DELETE",
-  })
+// Delete a task
+export const deleteTask = async (id: number): Promise<void> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/tasks/${id}`, {
+      method: "DELETE",
+    })
 
-  if (!response.ok) {
-    throw new Error("Failed to delete task")
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.error || `Error: ${response.status} ${response.statusText}`)
+    }
+
+    await response.json()
+  } catch (error) {
+    console.error("Error deleting task:", error)
+    throw error
   }
 }
 
