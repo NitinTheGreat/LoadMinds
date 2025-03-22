@@ -15,14 +15,29 @@ db = SQLAlchemy(app)
 class Task(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    priority = db.Column(db.String(20), default="medium")
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     def to_dict(self):
-        return {
+        result = {
             'id': self.id,
             'title': self.title,
             'created_at': self.created_at.isoformat()
         }
+        
+        # Safely add description and priority if they exist
+        try:
+            result['description'] = self.description if self.description else ''
+        except:
+            result['description'] = ''
+            
+        try:
+            result['priority'] = self.priority if self.priority else 'medium'
+        except:
+            result['priority'] = 'medium'
+            
+        return result
 
 # API Routes
 @app.route('/api/tasks', methods=['GET'])
@@ -37,11 +52,31 @@ def create_task():
     if not data or 'title' not in data:
         return jsonify({"error": "Title is required"}), 400
     
+    # Create a new task with only the title and created_at fields
+    # This will work even if the other columns don't exist yet
     new_task = Task(title=data['title'])
-    db.session.add(new_task)
-    db.session.commit()
     
-    return jsonify(new_task.to_dict()), 201
+    # Try to set description and priority if the columns exist
+    try:
+        if 'description' in data:
+            new_task.description = data['description']
+    except:
+        pass
+        
+    try:
+        if 'priority' in data:
+            new_task.priority = data['priority']
+    except:
+        pass
+    
+    db.session.add(new_task)
+    
+    try:
+        db.session.commit()
+        return jsonify(new_task.to_dict()), 201
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/api/tasks/<int:task_id>', methods=['DELETE'])
 def delete_task(task_id):
@@ -62,3 +97,11 @@ if __name__ == '__main__':
     app.run(debug=True)
 
 print("Flask server with MySQL integration ready!")
+
+@app.route('/api/debug', methods=['GET'])
+def debug_database():
+    tasks = Task.query.all()
+    return jsonify({
+        'task_count': len(tasks),
+        'tasks': [task.to_dict() for task in tasks]
+    })

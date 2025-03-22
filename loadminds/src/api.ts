@@ -20,14 +20,14 @@ export const getTasks = async (): Promise<Task[]> => {
 }
 
 // Add a new task
-export const addTask = async (title: string): Promise<Task> => {
+export const addTask = async (title: string, description: string, priority: string): Promise<Task> => {
   try {
     const response = await fetch(`${API_BASE_URL}/api/tasks`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ title }),
+      body: JSON.stringify({ title, description, priority }),
     })
 
     if (!response.ok) {
