@@ -1,7 +1,8 @@
 import type { Task } from "./types"
 
 // Base URL for the API
-const API_BASE_URL = "http://127.0.0.1:5000"
+
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 // Get all tasks
 export const getTasks = async (): Promise<Task[]> => {
