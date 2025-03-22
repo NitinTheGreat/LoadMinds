@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { getTasks, addTask, deleteTask } from "../api"
 import type { Task, Toast } from "../types"
-import ToastComponent from "../Components/toast"
+import ToastComponent from "../Components/Toast"
 import TaskForm from "../Components/TaskForm"
 import { X } from "lucide-react"
 
@@ -13,7 +13,6 @@ export default function Dashboard() {
   const [toasts, setToasts] = useState<Toast[]>([])
   const [priorityFilter, setPriorityFilter] = useState<string>("all")
 
-  // Add a toast notification
   const addToast = (type: "success" | "error", message: string) => {
     const newToast = {
       id: Date.now().toString(),
@@ -23,7 +22,6 @@ export default function Dashboard() {
     setToasts((prev) => [...prev, newToast])
   }
 
-  // Remove a toast notification
   const removeToast = (id: string) => {
     setToasts((prev) => prev.filter((toast) => toast.id !== id))
   }
