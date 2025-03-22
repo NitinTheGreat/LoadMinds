@@ -1,13 +1,41 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import text
 from datetime import datetime
 import pytz
+import urllib.parse
+import os
+import ssl
 
 app = Flask(__name__)
 CORS(app)  
+# since password contains @ symbol, we need to encode it
+password = urllib.parse.quote_plus("Thegre@t1")
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:thegreat1@localhost/taskflow'
+#  absolute path to the SSL certificate
+current_dir = os.path.dirname(os.path.abspath(__file__))
+ssl_cert_path = os.path.join(current_dir, "DigiCertGlobalRootCA.crt.pem")
+print(f"SSL certificate path: {ssl_cert_path}")
+
+if not os.path.exists(ssl_cert_path):
+    print(f"WARNING: SSL certificate file not found at {ssl_cert_path}")
+
+app.config['SQLALCHEMY_DATABASE_URI'] = (
+    f'mysql+pymysql://adminlogin:{password}@taskflow-mysql.mysql.database.azure.com:3306/taskflow'
+    f'?ssl_ca={ssl_cert_path}'
+)
+
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    'connect_args': {
+        'ssl': {
+            'ca': ssl_cert_path,
+            'check_hostname': True,
+            'verify_mode': ssl.CERT_REQUIRED
+        }
+    }
+}
+
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 ist = pytz.timezone('Asia/Kolkata')
@@ -18,7 +46,6 @@ class Task(db.Model):
     description = db.Column(db.Text, nullable=True)
     priority = db.Column(db.String(20), default="medium")
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(ist))
-    # created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
     def to_dict(self):
         result = {
@@ -85,13 +112,6 @@ def delete_task(task_id):
     
     return jsonify({"message": "Task deleted successfully"}), 200
 
-if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()  # to create tables if they don't exist
-    app.run(debug=True)
-
-print("Flask server with MySQL integration ready!")
-
 @app.route('/api/debug', methods=['GET'])
 def debug_database():
     tasks = Task.query.all()
@@ -99,3 +119,44 @@ def debug_database():
         'task_count': len(tasks),
         'tasks': [task.to_dict() for task in tasks]
     })
+# For connection to azure check
+
+
+@app.route('/api/health', methods=['GET'])
+def health_check():
+    return jsonify({"status": "ok", "message": "Server is running"}), 200
+
+# Add a connection test endpoint to verify database connectivity
+@app.route('/api/test-connection', methods=['GET'])
+def test_connection():
+    try:
+        # Use text() function for raw SQL
+        result = db.session.execute(text("SELECT 1"))
+        print(f"Test connection result: {result}")
+        return jsonify({"status": "ok", "message": "Database connection successful"}), 200
+    except Exception as e:
+        print(f"Test connection error: {str(e)}")
+        return jsonify({"status": "error", "message": f"Database connection failed: {str(e)}"}), 500
+
+if __name__ == '__main__':
+    try:
+        with app.app_context():
+            print("Attempting to connect to database...")
+            result = db.session.execute(text("SELECT 1"))
+            print(f"Database connection successful! Result: {result}")
+            
+            # Create tables if they don't exist
+            print("Creating tables...")
+            db.create_all()
+            print("Tables created successfully!")
+        
+        print("Starting Flask server...")
+        app.run(debug=True)
+    except Exception as e:
+        print(f"Error during startup: {str(e)}")
+        # Print more detailed error information
+        import traceback
+        traceback.print_exc()
+
+print("Flask server with MySQL integration ready!")
+
