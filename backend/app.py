@@ -26,6 +26,8 @@ app.config['SQLALCHEMY_DATABASE_URI'] = (
     f'?ssl_ca={ssl_cert_path}'
 )
 
+# app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:thegreat1@localhost/taskflow'  --> for local
+
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     'connect_args': {
         'ssl': {
